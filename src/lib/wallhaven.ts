@@ -59,10 +59,17 @@ export async function ensureAppFolder(): Promise<string> {
   return wallpapersDir;
 }
 
+async function applyWallpaperFromPath(filePath: string): Promise<void> {
+  // Apply as wallpaper via AppleScript
+  const script = `tell application "System Events" to tell every desktop to set picture to "${filePath}"`;
+  const command = Command.create("osascript", ["-e", script]);
+  await command.execute();
+}
+
 export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
   const dir = await ensureAppFolder();
 
-  // Descargar la imagen
+  // Download the image
   const res = await fetch(wallpaper.path);
   const arrayBuffer = await res.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
@@ -71,9 +78,9 @@ export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
   const filePath = `${dir}/wallhaven-${wallpaper.id}.${ext}`;
 
   await writeFile(filePath, bytes);
+  await applyWallpaperFromPath(filePath);
+}
 
-  // Aplicar como wallpaper vía AppleScript
-  const script = `tell application "System Events" to tell every desktop to set picture to "${filePath}"`;
-  const command = Command.create("osascript", ["-e", script]);
-  await command.execute();
+export async function applyLocalWallpaper(filePath: string): Promise<void> {
+  await applyWallpaperFromPath(filePath);
 }

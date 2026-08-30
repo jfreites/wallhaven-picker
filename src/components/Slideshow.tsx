@@ -5,6 +5,7 @@ interface SlideshowProps {
   currentIndex: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  onApply: (wallpaper: Wallpaper) => void;
 }
 
 export function Slideshow({
@@ -12,6 +13,7 @@ export function Slideshow({
   currentIndex,
   onClose,
   onNavigate,
+  onApply,
 }: SlideshowProps) {
   const current = wallpapers[currentIndex];
   if (!current) return null;
@@ -24,14 +26,16 @@ export function Slideshow({
     onNavigate((currentIndex + 1) % wallpapers.length);
   };
 
-  async function handleSetWallpaper() {
+  function handleSetWallpaper() {
+    /*
     try {
       await setWallpaper(current);
       alert("Wallpaper aplicado");
     } catch (err) {
       console.error("Error al aplicar wallpaper:", err);
       alert("Error: " + err);
-    }
+    }*/
+    onApply(current);
   }
 
   return (
