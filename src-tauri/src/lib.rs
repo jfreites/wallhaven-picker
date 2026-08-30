@@ -4,6 +4,8 @@ use tauri::{
     ActivationPolicy, Manager,
 };
 
+use tauri::image::Image;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -17,11 +19,14 @@ pub fn run() {
 
             let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_item])?;
+            let icon = Image::from_bytes(include_bytes!("../icons/tray-iconTemplate.png"))?;
 
             TrayIconBuilder::new()
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .icon(app.default_window_icon().unwrap().clone())
+                //.icon(app.default_window_icon().unwrap().clone())
+                .icon(icon)
+                .icon_as_template(true)
                 .on_menu_event(|app, event| {
                     if event.id.as_ref() == "quit" {
                         app.exit(0);
