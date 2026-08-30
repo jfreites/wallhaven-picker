@@ -2,13 +2,22 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { Command } from "@tauri-apps/plugin-shell";
 import { homeDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { mkdir, exists, readDir , writeFile } from "@tauri-apps/plugin-fs";
+import { mkdir, exists, readDir , writeFile, stat, remove } from "@tauri-apps/plugin-fs";
+import { availableMonitors, primaryMonitor } from "@tauri-apps/api/window";
 
 export interface Wallpaper {
   id: string;
   path: string;
   thumbs: { small: string; original: string };
   resolution: string;
+}
+
+export async function getPrimaryResolution(): Promise<string | null> {
+  const monitor = await primaryMonitor();
+  if (!monitor) return null;
+
+  const { width, height } = monitor.size;
+  return `${width}x${height}`;
 }
 
 export interface LocalWallpaper {
@@ -83,4 +92,34 @@ export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
 
 export async function applyLocalWallpaper(filePath: string): Promise<void> {
   await applyWallpaperFromPath(filePath);
+}
+
+export async function getStorageInfo(): Promise<{ count: number; totalBytes: number }> {
+  const dir = await ensureAppFolder();
+  const entries = await readDir(dir);
+  const files = entries.filter((e) => !e.isDirectory);
+
+  let totalBytes = 0;
+  for (const file of files) {
+    const info = await stat(`${dir}/${file.name}`);
+    totalBytes += info.size;
+  }
+
+  return { count: files.length, totalBytes };
+}
+
+export async function clearStorage(): Promise<void> {
+  const dir = await ensureAppFolder();
+  const entries = await readDir(dir);
+  const files = entries.filter((e) => !e.isDirectory);
+
+  for (const file of files) {
+    await remove(`${dir}/${file.name}`);
+  }
+}
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

@@ -23,33 +23,87 @@
         }
       ]
     },
+    "fs:allow-stat",
+    "fs:allow-remove",
+    {
+      "identifier": "fs:allow-stat",
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        },
+        {
+          "path": "$HOME/WallhavenPicker/*"
+        },
+        {
+          "path": "$HOME/WallhavenPicker/Wallpapers/*"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        },
+        {
+          "path": "$HOME/WallhavenPicker/*"
+        },
+        {
+          "path": "$HOME/WallhavenPicker/Wallpapers/*"
+        }
+      ]
+    },
     "fs:allow-mkdir",
     "fs:allow-exists",
     "fs:allow-write-file",
     {
       "identifier": "fs:allow-mkdir",
-      "allow": [{ "path": "$HOME/WallhavenPicker/**" }]
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        }
+      ]
     },
     {
       "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$HOME/WallhavenPicker/**" }]
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        }
+      ]
     },
     {
       "identifier": "fs:allow-write-file",
-      "allow": [{ "path": "$HOME/WallhavenPicker/**" }]
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        }
+      ]
     },
     {
       "identifier": "fs:allow-read-dir",
-      "allow": [{ "path": "$HOME/WallhavenPicker/**" }]
+      "allow": [
+        {
+          "path": "$HOME/WallhavenPicker/**"
+        }
+      ]
     },
     "http:default",
     {
       "identifier": "http:default",
       "allow": [
-        { "url": "https://wallhaven.cc/api/*" },
-        { "url": "https://w.wallhaven.cc/*" },
-        { "url": "https://th.wallhaven.cc/*" }
+        {
+          "url": "https://wallhaven.cc/api/*"
+        },
+        {
+          "url": "https://w.wallhaven.cc/*"
+        },
+        {
+          "url": "https://th.wallhaven.cc/*"
+        }
       ]
-    }
+    },
+    "store:default",
+    "dialog:default"
   ]
 }

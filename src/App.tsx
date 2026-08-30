@@ -1,8 +1,21 @@
 import { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { searchWallpapers, Wallpaper, listLocalWallpapers, LocalWallpaper, applyLocalWallpaper, setWallpaper } from "./lib/wallhaven";
+import {
+  searchWallpapers,
+  Wallpaper,
+  listLocalWallpapers,
+  LocalWallpaper,
+  applyLocalWallpaper,
+  setWallpaper,
+  getPrimaryResolution,
+  getStorageInfo,
+  clearStorage,
+  formatBytes
+} from "./lib/wallhaven";
 import { Slideshow } from "./components/Slideshow";
-import { Settings, WallpaperIcon, Search } from "lucide-react";
+import { SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus } from "lucide-react";
+import { getSettings, saveSettings, Settings } from "./lib/settings";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
 function App() {
@@ -13,6 +26,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<"search" | "local" | "settings">("search");
   const [localWallpapers, setLocalWallpapers] = useState<LocalWallpaper[]>([]);
   const [applyStatus, setApplyStatus] = useState<"idle" | "applying" | "error">("idle");
+  const [settings, setSettings] = useState<Settings>({ useResolutionFilter: true });
+  const [storageInfo, setStorageInfo] = useState<{ count: number; totalBytes: number } | null>(null);
+  const [pinned, setPinned] = useState(false);
 
   const toastStyle: React.CSSProperties = {
     position: "fixed",
@@ -52,30 +68,61 @@ function App() {
   }
 
   useEffect(() => {
-    if (activeTab === "local") {
-      listLocalWallpapers().then(setLocalWallpapers);
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
     const win = getCurrentWindow();
     const unlisten = win.listen("tauri://blur", () => {
-      win.hide();
+      if (!pinned) {
+        win.hide();
+      }
     });
     return () => {
       unlisten.then((f) => f());
     };
+  }, [pinned]);
+
+  useEffect(() => {
+    getSettings().then(setSettings);
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "local") {
+      listLocalWallpapers().then(setLocalWallpapers);
+    }
+
+    if (activeTab === "settings") {
+      getStorageInfo().then(setStorageInfo);
+    }
+  }, [activeTab]);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const results = await searchWallpapers(query);
+      const atleast = settings.useResolutionFilter
+        ? await getPrimaryResolution() ?? undefined
+        : undefined;
+      const results = await searchWallpapers(query, atleast);
       setWallpapers(results);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleToggleResolutionFilter() {
+    const updated = { ...settings, useResolutionFilter: !settings.useResolutionFilter };
+    setSettings(updated);
+    await saveSettings(updated);
+  }
+
+  async function handleClearStorage() {
+    const confirmed = await confirm(
+      "¿Borrar todos los wallpapers guardados? Esta acción no se puede deshacer.",
+      { title: "Confirmar", kind: "warning" }
+    );
+    if (!confirmed) return;
+
+    await clearStorage();
+    setStorageInfo({ count: 0, totalBytes: 0 });
+    setLocalWallpapers([]);
   }
 
   return (
@@ -108,20 +155,51 @@ function App() {
           </button>
         </div>
 
-        <button
-          onClick={() => setActiveTab("settings")}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            padding: 4,
-            display: "flex",
-            alignItems: "center",
-          }}
-          aria-label="Ajustes"
-        >
-          <Settings size={18} />
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setActiveTab("settings")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+            }}
+            aria-label="Ajustes"
+          >
+            <SettingsIcon size={18} />
+          </button>
+
+          <button
+            onClick={() => setPinned((p) => !p)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+              color: pinned ? "#3498db" : "inherit",
+            }}
+            aria-label={pinned ? "Desfijar ventana" : "Fijar ventana"}
+          >
+            {pinned ? <Pin size={18} /> : <PinOff size={18} />}
+          </button>
+
+          <button
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            <Minus size={18} />
+          </button>
+        </div>
       </div>
 
       {activeTab === "search" && (
@@ -181,17 +259,25 @@ function App() {
       )}
 
       {activeTab === "settings" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 8,
-            maxHeight: 340,
-            overflowY: "auto",
-          }}
-        >
+        <div>
           <h3>Ajustes</h3>
-          <p>...</p>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={settings.useResolutionFilter}
+              onChange={handleToggleResolutionFilter}
+            />
+            Filtrar por resolución de mi pantalla
+          </label>
+          <hr />
+          <div style={{ marginTop: 16 }}>
+            <p style={{ margin: "0 0 8px" }}>
+              {storageInfo
+                ? `${storageInfo.count} wallpapers guardados (${formatBytes(storageInfo.totalBytes)})`
+                : "Calculando..."}
+            </p>
+            <button onClick={handleClearStorage}>Limpiar almacenamiento</button>
+          </div>
         </div>
       )}
 
