@@ -10,7 +10,8 @@ import {
   getPrimaryResolution,
   getStorageInfo,
   clearStorage,
-  formatBytes
+  formatBytes,
+  SortingPreset
 } from "./lib/wallhaven";
 import { Slideshow } from "./components/Slideshow";
 import { SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus } from "lucide-react";
@@ -29,6 +30,8 @@ function App() {
   const [settings, setSettings] = useState<Settings>({ useResolutionFilter: true });
   const [storageInfo, setStorageInfo] = useState<{ count: number; totalBytes: number } | null>(null);
   const [pinned, setPinned] = useState(false);
+  const [sorting, setSorting] = useState<SortingPreset>("date_added");
+  const [page, setPage] = useState(1);
 
   const toastStyle: React.CSSProperties = {
     position: "fixed",
@@ -93,6 +96,7 @@ function App() {
     }
   }, [activeTab]);
 
+  /*
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -106,6 +110,7 @@ function App() {
       setLoading(false);
     }
   }
+  */
 
   async function handleToggleResolutionFilter() {
     const updated = { ...settings, useResolutionFilter: !settings.useResolutionFilter };
@@ -124,6 +129,49 @@ function App() {
     setStorageInfo({ count: 0, totalBytes: 0 });
     setLocalWallpapers([]);
   }
+
+  async function runSearch(pageToLoad: number, append: boolean) {
+    setLoading(true);
+    try {
+      const atleast = settings.useResolutionFilter
+        ? await getPrimaryResolution() ?? undefined
+        : undefined;
+      const results = await searchWallpapers(query, atleast, sorting, pageToLoad);
+      setWallpapers((prev) => (append ? [...prev, ...results] : results));
+      setPage(pageToLoad);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    await runSearch(1, false);
+  }
+
+  function handlePresetClick(value: SortingPreset) {
+    setSorting(value);
+  }
+
+  useEffect(() => {
+    runSearch(1, false);
+  }, [sorting]);
+
+  function handleLoadMore() {
+    runSearch(page + 1, true);
+  }
+
+  function handleCloseWindow() {
+    const win = getCurrentWindow();
+    win.hide();
+  }
+
+  const presets: { label: string; value: SortingPreset, color: string }[] = [
+    { label: "Latest", value: "date_added", color: "#ad3" },
+    { label: "Hot", value: "hot", color: "#f43" },
+    { label: "Toplist", value: "toplist", color: "#b760f0" },
+    { label: "Random", value: "random", color: "#e73" },
+  ];
 
   return (
     <div style={{ padding: 12 }}>
@@ -188,6 +236,7 @@ function App() {
           </button>
 
           <button
+            onClick={handleCloseWindow}
             style={{
               background: "none",
               border: "none",
@@ -213,6 +262,19 @@ function App() {
             <button type="submit" style={{ border: "none", backgroundImage: 'linear-gradient(to rigth, #4880EC, #019CAD)', color: "#CCCCCC" }}>Buscar</button>
           </form>
 
+          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+            {presets.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => handlePresetClick(p.value)}
+                className="tag-button"
+                style={{ fontWeight: sorting === p.value ? "bold" : "normal", color: p.color, borderColor: p.color, '--hover-color': p.color  }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
           {loading && <p>Cargando...</p>}
 
           <div style={{
@@ -233,6 +295,12 @@ function App() {
               />
             ))}
           </div>
+
+          {wallpapers.length > 0 && (
+            <button onClick={handleLoadMore} disabled={loading} style={{ marginTop: 8 }}>
+              {loading ? "Cargando..." : "Cargar más"}
+            </button>
+          )}
         </>
       )}
 

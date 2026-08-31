@@ -95,6 +95,10 @@ button {
   margin-right: 5px;
 }
 
+.tag-button:hover {
+  background-color: color-mix(in srgb, var(--hover-color) 20%, transparent);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;

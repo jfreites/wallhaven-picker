@@ -3,7 +3,9 @@ import { Command } from "@tauri-apps/plugin-shell";
 import { homeDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { mkdir, exists, readDir , writeFile, stat, remove } from "@tauri-apps/plugin-fs";
-import { availableMonitors, primaryMonitor } from "@tauri-apps/api/window";
+import { primaryMonitor } from "@tauri-apps/api/window";
+
+export type SortingPreset = "date_added" | "hot" | "toplist" | "random";
 
 export interface Wallpaper {
   id: string;
@@ -44,9 +46,15 @@ export async function listLocalWallpapers(): Promise<LocalWallpaper[]> {
 
 export async function searchWallpapers(
   query: string,
-  atleast?: string
+  atleast?: string,
+  sorting: SortingPreset = "date_added",
+  page: number = 1
 ): Promise<Wallpaper[]> {
-  const params = new URLSearchParams({ q: query });
+  const params = new URLSearchParams({
+    q: query,
+    sorting,
+    page: String(page),
+  });
   if (atleast) params.set("atleast", atleast);
 
   const res = await fetch(

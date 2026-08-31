@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "wallhaven-picker",
-        "width": 760,
-        "height": 500,
+        "width": 800,
+        "height": 630,
         "visible": false,
         "decorations": false,
         "resizable": false,
