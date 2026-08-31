@@ -14,6 +14,7 @@ App de barra de menú para macOS que permite buscar y aplicar wallpapers desde [
 - Guarda localmente cada wallpaper aplicado en `~/WallhavenPicker/Wallpapers`
 - Pestaña "Mis Wallpapers" para ver y reaplicar wallpapers ya descargados, sin volver a buscar
 - Gestión de almacenamiento: ver cuánto espacio ocupan tus wallpapers guardados y limpiarlo con un click
+- Filtro de categorías y purity (SFW/Sketchy/NSFW) con soporte de API key
 
 ## Stack
 
@@ -36,6 +37,26 @@ pnpm install
 pnpm tauri dev
 ```
 
+## Build / instalación local
+
+Para generar la app compilada (.app) y su instalador (.dmg):
+
+```bash
+pnpm install
+pnpm tauri build
+```
+
+Los artefactos quedan en `src-tauri/target/release/bundle/`:
+- `macos/wallhaven-picker.app` — la app en sí
+- `dmg/wallhaven-picker_x.x.x_aarch64.dmg` — instalador tipo imagen de disco
+
+**Nota sobre Gatekeeper:** esta app no está firmada con una cuenta de Apple Developer, así que macOS puede mostrar una advertencia de "no se puede verificar el desarrollador" al abrirla por primera vez. Para permitir su ejecución:
+
+- Click derecho sobre la app → "Abrir" → confirmar en el diálogo, o
+- Desde terminal: `xattr -cr /ruta/a/wallhaven-picker.app`
+
+Una vez abierta la primera vez, funciona con doble-click normalmente.
+
 ## Cómo funciona (resumen técnico)
 
 - El ícono de la barra de menú controla la visibilidad de una única ventana (popover), que se oculta automáticamente al perder el foco
@@ -46,7 +67,6 @@ pnpm tauri dev
 
 ## Roadmap / ideas pendientes
 
-- Filtro de categorías y purity (SFW/Sketchy/NSFW) con soporte de API key
 - Rotación automática de wallpaper (slideshow real, no solo preview)
 - Favoritos / colecciones
 

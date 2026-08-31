@@ -19,6 +19,10 @@ import { getSettings, saveSettings, Settings } from "./lib/settings";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import "./App.css";
 
+type CSSVarStyle = React.CSSProperties & {
+  [key: `--${string}`]: string | number;
+};
+
 function App() {
   const [query, setQuery] = useState("nature");
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
@@ -163,6 +167,15 @@ function App() {
     { label: "Random", value: "random", color: "#e73" },
   ];
 
+  function getTagButtonStyle(active: boolean, color: string): CSSVarStyle {
+    return {
+      fontWeight: active ? "bold" : "normal",
+      color: color,
+      borderColor: color,
+      '--hover-color': color,
+    };
+  }
+
   return (
     <div style={{ padding: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -258,7 +271,7 @@ function App() {
                 key={p.value}
                 onClick={() => handlePresetClick(p.value)}
                 className="tag-button"
-                style={{ fontWeight: sorting === p.value ? "bold" : "normal", color: p.color, borderColor: p.color, '--hover-color': p.color  }}
+                style={getTagButtonStyle(sorting === p.value, p.color)}
               >
                 {p.label}
               </button>

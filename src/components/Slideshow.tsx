@@ -1,4 +1,4 @@
-import { setWallpaper, Wallpaper } from "../lib/wallhaven";
+import { Wallpaper } from "../lib/wallhaven";
 
 interface SlideshowProps {
   wallpapers: Wallpaper[];
