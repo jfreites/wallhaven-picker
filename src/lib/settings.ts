@@ -4,10 +4,12 @@ const STORE_FILE = "settings.json";
 
 export interface Settings {
   useResolutionFilter: boolean;
+  apiKey?: string;
 }
 
 const defaults: Settings = {
   useResolutionFilter: true,
+  apiKey: undefined,
 };
 
 export async function getSettings(): Promise<Settings> {

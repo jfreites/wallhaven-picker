@@ -14,7 +14,7 @@ import {
   SortingPreset
 } from "./lib/wallhaven";
 import { Slideshow } from "./components/Slideshow";
-import { SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus } from "lucide-react";
+import { SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus, BrushCleaning, ArrowBigDown } from "lucide-react";
 import { getSettings, saveSettings, Settings } from "./lib/settings";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import "./App.css";
@@ -96,22 +96,6 @@ function App() {
     }
   }, [activeTab]);
 
-  /*
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const atleast = settings.useResolutionFilter
-        ? await getPrimaryResolution() ?? undefined
-        : undefined;
-      const results = await searchWallpapers(query, atleast);
-      setWallpapers(results);
-    } finally {
-      setLoading(false);
-    }
-  }
-  */
-
   async function handleToggleResolutionFilter() {
     const updated = { ...settings, useResolutionFilter: !settings.useResolutionFilter };
     setSettings(updated);
@@ -136,7 +120,7 @@ function App() {
       const atleast = settings.useResolutionFilter
         ? await getPrimaryResolution() ?? undefined
         : undefined;
-      const results = await searchWallpapers(query, atleast, sorting, pageToLoad);
+      const results = await searchWallpapers(query, atleast, sorting, pageToLoad, settings.apiKey);
       setWallpapers((prev) => (append ? [...prev, ...results] : results));
       setPage(pageToLoad);
     } finally {
@@ -164,6 +148,12 @@ function App() {
   function handleCloseWindow() {
     const win = getCurrentWindow();
     win.hide();
+  }
+
+  async function handleApiKeyChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const updated = { ...settings, apiKey: e.target.value || undefined };
+    setSettings(updated);
+    await saveSettings(updated);
   }
 
   const presets: { label: string; value: SortingPreset, color: string }[] = [
@@ -297,8 +287,18 @@ function App() {
           </div>
 
           {wallpapers.length > 0 && (
-            <button onClick={handleLoadMore} disabled={loading} style={{ marginTop: 8 }}>
-              {loading ? "Cargando..." : "Cargar más"}
+            <button
+              onClick={handleLoadMore}
+              disabled={loading}
+              style={{ marginTop: 8, 
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              }}>
+                <ArrowBigDown size={18} />
+                <span>
+                  {loading ? "Cargando..." : "Cargar más"}
+                </span>
             </button>
           )}
         </>
@@ -337,14 +337,47 @@ function App() {
             />
             Filtrar por resolución de mi pantalla
           </label>
-          <hr />
+          <hr style={{ backgroundColor: "#dfdfdf", border: "none", height: "2px" }} />
+          <div style={{ marginTop: 16 }}>
+            <label style={{ display: "block", marginBottom: 4 }}>
+              API Key de Wallhaven (opcional)
+            </label>
+            <input
+              type="password"
+              value={settings.apiKey ?? ""}
+              onChange={handleApiKeyChange}
+              placeholder="Pega tu API key aquí"
+              style={{ width: "400px" }}
+            />
+            <p style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+              Desbloquea NSFW/Sketchy y mejores límites de resultados.{" "}
+              <a
+                href="https://wallhaven.cc/settings/account"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Consigue la tuya aquí
+              </a>
+            </p>
+          </div>
+          <hr style={{ backgroundColor: "#dfdfdf", border: "none", height: "2px" }} />
           <div style={{ marginTop: 16 }}>
             <p style={{ margin: "0 0 8px" }}>
               {storageInfo
                 ? `${storageInfo.count} wallpapers guardados (${formatBytes(storageInfo.totalBytes)})`
                 : "Calculando..."}
             </p>
-            <button onClick={handleClearStorage}>Limpiar almacenamiento</button>
+            <button
+              onClick={handleClearStorage}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4
+              }}
+              >
+              <BrushCleaning size={18} />
+              <span>Limpiar almacenamiento</span>
+            </button>
           </div>
         </div>
       )}

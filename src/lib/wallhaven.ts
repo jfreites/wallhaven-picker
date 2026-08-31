@@ -48,7 +48,8 @@ export async function searchWallpapers(
   query: string,
   atleast?: string,
   sorting: SortingPreset = "date_added",
-  page: number = 1
+  page: number = 1,
+  apiKey?: string
 ): Promise<Wallpaper[]> {
   const params = new URLSearchParams({
     q: query,
@@ -56,6 +57,7 @@ export async function searchWallpapers(
     page: String(page),
   });
   if (atleast) params.set("atleast", atleast);
+  if (apiKey) params.set("apikey", apiKey);
 
   const res = await fetch(
     `https://wallhaven.cc/api/v1/search?${params.toString()}`
