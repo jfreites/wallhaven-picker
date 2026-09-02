@@ -25,6 +25,7 @@ type CSSVarStyle = React.CSSProperties & {
 
 function App() {
   const [query, setQuery] = useState("nature");
+  const [activeQuery, setActiveQuery] = useState("");
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -118,15 +119,16 @@ function App() {
     setLocalWallpapers([]);
   }
 
-  async function runSearch(pageToLoad: number, append: boolean) {
+  async function runSearch(pageToLoad: number, append: boolean, searchQuery: string) {
     setLoading(true);
     try {
       const atleast = settings.useResolutionFilter
         ? await getPrimaryResolution() ?? undefined
         : undefined;
-      const results = await searchWallpapers(query, atleast, sorting, pageToLoad, settings.apiKey);
+      const results = await searchWallpapers(searchQuery, atleast, sorting, pageToLoad, settings.apiKey);
       setWallpapers((prev) => (append ? [...prev, ...results] : results));
       setPage(pageToLoad);
+      setActiveQuery(searchQuery);
     } finally {
       setLoading(false);
     }
@@ -134,7 +136,7 @@ function App() {
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    await runSearch(1, false);
+    await runSearch(1, false, query);
   }
 
   function handlePresetClick(value: SortingPreset) {
@@ -142,11 +144,11 @@ function App() {
   }
 
   useEffect(() => {
-    runSearch(1, false);
+    runSearch(1, false, "");
   }, [sorting]);
 
   function handleLoadMore() {
-    runSearch(page + 1, true);
+    runSearch(page + 1, true, activeQuery);
   }
 
   function handleCloseWindow() {
