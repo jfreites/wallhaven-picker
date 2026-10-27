@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
-  searchWallpapers,
-  Wallpaper,
   listLocalWallpapers,
   LocalWallpaper,
   applyLocalWallpaper,
@@ -12,8 +10,15 @@ import {
   getPrimaryResolution,
   getStorageInfo,
   clearStorage,
-  SortingPreset
-} from "./lib/wallhaven";
+} from "./lib/storage";
+import {
+  getSource,
+  DEFAULT_SOURCE_ID,
+  describeError,
+  SourceError,
+} from "./sources";
+import type { Wallpaper, SearchFilters, SortingPreset, SourceId } from "./sources";
+import { creditFor } from "./lib/attribution";
 import { Slideshow } from "./components/Slideshow";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { IconButton } from "./components/IconButton";
@@ -24,10 +29,9 @@ import { WallpaperCard, SkeletonGrid } from "./components/WallpaperGrid";
 import { EmptyState } from "./components/EmptyState";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Toast, ToastState } from "./components/Toast";
-import { SOURCES, SourceId } from "./lib/sources";
 import {
   SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus,
-  ArrowDown, Check, Download, Eye, ImageOff, WifiOff, Trash2,
+  ArrowDown, Check, Download, Eye, ImageOff, WifiOff, Trash2, Clock, TriangleAlert,
 } from "lucide-react";
 import { getSettings, saveSettings, Settings } from "./lib/settings";
 import { confirm } from "@tauri-apps/plugin-dialog";
@@ -48,7 +52,9 @@ function App() {
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [searchFailed, setSearchFailed] = useState(false);
+  const [searchError, setSearchError] = useState<unknown>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("search");
   const [localWallpapers, setLocalWallpapers] = useState<LocalWallpaper[]>([]);
@@ -57,11 +63,12 @@ function App() {
   const [storageInfo, setStorageInfo] = useState<{ count: number; totalBytes: number } | null>(null);
   const [pinned, setPinned] = useState(false);
   const [sorting, setSorting] = useState<SortingPreset>("date_added");
-  const [source, setSource] = useState<SourceId>(SOURCES[0].id);
+  const [sourceId, setSourceId] = useState<SourceId>(DEFAULT_SOURCE_ID);
   const [page, setPage] = useState(1);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
+  const requestId = useRef(0);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   function showToast(next: ToastState | null, autoHideMs?: number) {
@@ -79,7 +86,8 @@ function App() {
       showToast({ kind: "success", message: done }, 1500);
     } catch (err) {
       console.error(err);
-      showToast({ kind: "error", message: "Algo salió mal. Inténtalo de nuevo." }, 2000);
+      const message = err instanceof SourceError ? describeError(err).title : "Algo salió mal. Inténtalo de nuevo.";
+      showToast({ kind: "error", message }, 3000);
     }
   }
 
@@ -117,7 +125,13 @@ function App() {
   }, [pinned]);
 
   useEffect(() => {
-    getSettings().then(setSettings);
+    getSettings()
+      .then((s) => {
+        setSettings(s);
+        setSourceId(getSource(s.sourceId).id);
+      })
+      .catch(console.error)
+      .finally(() => setSettingsLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -170,23 +184,45 @@ function App() {
   }
 
   async function runSearch(pageToLoad: number, append: boolean, searchQuery: string) {
+    const id = ++requestId.current;
+    const src = getSource(sourceId);
     setLoading(true);
     setLoadingMore(append);
-    setSearchFailed(false);
+    setSearchError(null);
     try {
-      const atleast = settings.useResolutionFilter
-        ? await getPrimaryResolution() ?? undefined
-        : undefined;
-      const results = await searchWallpapers(searchQuery, atleast, sorting, pageToLoad, settings.apiKey);
-      setWallpapers((prev) => (append ? [...prev, ...results] : results));
+      const filters: SearchFilters = { sorting, apiKey: settings.apiKey };
+      if (src.capabilities.resolutionFilter && settings.useResolutionFilter) {
+        filters.atleast = (await getPrimaryResolution()) ?? undefined;
+      }
+      const q = searchQuery.trim();
+      const result =
+        !q && src.capabilities.featured && src.featured
+          ? await src.featured(pageToLoad, filters)
+          : await src.search(q, pageToLoad, filters);
+      if (id !== requestId.current) return; // llegó tarde: ya hay otra búsqueda o fuente
+      setWallpapers((prev) => {
+        if (!append) return result.items;
+        const seen = new Set(prev.map((w) => w.id));
+        return [...prev, ...result.items.filter((w) => !seen.has(w.id))];
+      });
+      setHasMore(result.hasMore);
       setPage(pageToLoad);
       setActiveQuery(searchQuery);
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error(err);
-      setSearchFailed(true);
+      if (append) {
+        showToast({ kind: "error", message: describeError(err, src.name).title }, 3000);
+      } else {
+        setWallpapers([]);
+        setHasMore(false);
+        setSearchError(err);
+      }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (id === requestId.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   }
 
@@ -195,8 +231,18 @@ function App() {
   }
 
   useEffect(() => {
+    if (!settingsLoaded) return; // esperar la API key y la última fuente guardadas
     runSearch(1, false, "");
-  }, [sorting]);
+  }, [settingsLoaded, sourceId, sorting]);
+
+  async function handleSourceChange(id: SourceId) {
+    if (id === sourceId) return;
+    setQuery("");
+    setSourceId(id);
+    const updated = { ...settings, sourceId: id };
+    setSettings(updated);
+    await saveSettings(updated);
+  }
 
   function handleLoadMore() {
     runSearch(page + 1, true, activeQuery);
@@ -213,7 +259,12 @@ function App() {
     await saveSettings(updated);
   }
 
+  const source = getSource(sourceId);
   const showSkeleton = loading && !loadingMore;
+  const errorInfo = searchError ? describeError(searchError, source.name) : null;
+  const errorKind = searchError instanceof SourceError ? searchError.kind : "http";
+  const errorIcon =
+    errorKind === "offline" ? <WifiOff size={26} /> : errorKind === "rate_limit" ? <Clock size={26} /> : <TriangleAlert size={26} />;
 
   return (
     <div className="app">
@@ -248,26 +299,39 @@ function App() {
         hidden={activeTab !== "search"}
       >
         <div className="toolbar">
-          <SearchBar ref={searchRef} value={query} onChange={setQuery} onSubmit={handleSearch} />
+          {source.capabilities.search && (
+            <SearchBar
+              ref={searchRef}
+              value={query}
+              onChange={setQuery}
+              onSubmit={handleSearch}
+              placeholder={`Buscar en ${source.name}…`}
+            />
+          )}
           <div className="toolbar__row">
-            <SourceSelector value={source} onChange={setSource} />
-            <SortChips value={sorting} onChange={setSorting} />
+            <SourceSelector value={sourceId} onChange={handleSourceChange} />
+            {source.capabilities.sorting && <SortChips value={sorting} onChange={setSorting} />}
           </div>
         </div>
 
         <div className="scroll" aria-busy={loading}>
-          {!showSkeleton && searchFailed && wallpapers.length === 0 ? (
+          {!showSkeleton && errorInfo ? (
             <EmptyState
-              icon={<WifiOff size={26} />}
-              title="No se pudo conectar con Wallhaven"
-              text="Revisa tu conexión y vuelve a intentarlo."
+              icon={errorIcon}
+              title={errorInfo.title}
+              text={errorInfo.text}
               action={<button type="button" className="btn" onClick={handleSearch}>Reintentar</button>}
             />
           ) : !showSkeleton && wallpapers.length === 0 ? (
             <EmptyState
               icon={<ImageOff size={26} />}
-              title="Sin resultados"
-              text="Prueba con otra palabra clave o cambia el orden."
+              title={`Sin resultados en ${source.name}`}
+              text={source.emptyHint}
+              action={
+                hasMore ? (
+                  <button type="button" className="btn" onClick={handleLoadMore}>Cargar más</button>
+                ) : undefined
+              }
             />
           ) : (
             <>
@@ -277,12 +341,13 @@ function App() {
                 ) : (
                   wallpapers.map((w, i) => (
                     <WallpaperCard
-                      key={w.id}
-                      src={w.thumbs.small}
-                      alt={w.resolution}
-                      detail={w.resolution}
-                      attribution={{ source: SOURCES[0].label }}
-                      openLabel={`Ver wallpaper ${w.resolution}`}
+                      key={`${w.sourceId}-${w.id}`}
+                      src={w.thumbUrl}
+                      sourceId={w.sourceId}
+                      alt={`${w.width}×${w.height}`}
+                      detail={`${w.width}×${w.height}`}
+                      attribution={creditFor(w)}
+                      openLabel={`Ver wallpaper ${w.width}×${w.height}`}
                       onOpen={() => setSelectedIndex(i)}
                       actions={[
                         { label: "Aplicar", icon: <Check size={14} />, onClick: () => handleApplyRemote(w) },
@@ -294,7 +359,7 @@ function App() {
                 )}
                 {loadingMore && <SkeletonGrid count={4} />}
               </div>
-              {!showSkeleton && wallpapers.length > 0 && (
+              {!showSkeleton && wallpapers.length > 0 && hasMore && (
                 <div className="load-more">
                   <button type="button" className="btn" onClick={handleLoadMore} disabled={loading}>
                     <ArrowDown size={14} aria-hidden />
@@ -333,6 +398,8 @@ function App() {
                     key={w.path}
                     src={w.url}
                     alt={w.name}
+                    detail={w.wallpaper ? `${w.wallpaper.width}×${w.wallpaper.height}` : undefined}
+                    attribution={w.wallpaper ? creditFor(w.wallpaper) : undefined}
                     openLabel={`Aplicar ${w.name}`}
                     onOpen={() => handleApplyLocal(w.path)}
                     actions={[

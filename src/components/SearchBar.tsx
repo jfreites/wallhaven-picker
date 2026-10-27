@@ -5,10 +5,11 @@ interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  placeholder?: string;
 }
 
 export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
-  ({ value, onChange, onSubmit }, ref) => (
+  ({ value, onChange, onSubmit, placeholder = "Buscar wallpapers…" }, ref) => (
     <form
       className="searchbar"
       role="search"
@@ -24,7 +25,7 @@ export const SearchBar = forwardRef<HTMLInputElement, SearchBarProps>(
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Buscar wallpapers…"
+        placeholder={placeholder}
         aria-label="Buscar wallpapers"
         aria-keyshortcuts="Meta+K"
         autoComplete="off"

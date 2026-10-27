@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
-import { Wallpaper } from "../lib/wallhaven";
+import { getSource } from "../sources";
+import type { Wallpaper } from "../sources";
+import { creditFor } from "../lib/attribution";
+import { SourceImage } from "./SourceImage";
 
 interface SlideshowProps {
   wallpapers: Wallpaper[];
@@ -16,10 +19,12 @@ function SlideImage({ wallpaper, dir }: { wallpaper: Wallpaper; dir: "next" | "p
   const [loaded, setLoaded] = useState(false);
   return (
     <div className={`slideshow__stage slide-${dir}`}>
-      <img
+      <SourceImage
         className={`slideshow__img${loaded ? " is-loaded" : ""}`}
-        src={wallpaper.thumbs.original}
-        alt={wallpaper.resolution}
+        sourceId={wallpaper.sourceId}
+        eager
+        src={wallpaper.previewUrl}
+        alt={`${wallpaper.width}×${wallpaper.height}`}
         onLoad={() => setLoaded(true)}
       />
     </div>
@@ -66,7 +71,7 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
         goNext();
       } else if (e.key === "Tab" && rootRef.current) {
         // Trampa de foco dentro del diálogo.
-        const focusables = rootRef.current.querySelectorAll<HTMLElement>("button");
+        const focusables = rootRef.current.querySelectorAll<HTMLElement>("button, a[href]");
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
         if (e.shiftKey && document.activeElement === first) {
@@ -83,6 +88,8 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
   });
 
   if (!current) return null;
+  const credit = creditFor(current);
+  const sourceName = getSource(current.sourceId).name;
 
   return (
     <div
@@ -106,13 +113,26 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
       </button>
 
       <div className="slideshow__bar">
-        <span className="slideshow__meta" aria-live="polite">
-          {current.resolution} · {currentIndex + 1}/{wallpapers.length}
-        </span>
-        <button type="button" className="btn btn--primary" onClick={() => onApply(current)}>
-          <Check size={14} aria-hidden />
-          Usar como wallpaper
-        </button>
+        <div className="slideshow__credit">
+          <span className="slideshow__credit-line">
+            {credit.href ? (
+              <a href={credit.href} target="_blank" rel="noreferrer">{credit.label}</a>
+            ) : (
+              credit.label
+            )}
+            {current.author && <> · <a href={current.pageUrl} target="_blank" rel="noreferrer">{sourceName}</a></>}
+            {current.license && <> · {current.license}</>}
+          </span>
+        </div>
+        <div className="slideshow__right">
+          <span className="slideshow__meta" aria-live="polite">
+            {current.width}×{current.height} · {currentIndex + 1}/{wallpapers.length}
+          </span>
+          <button type="button" className="btn btn--primary" onClick={() => onApply(current)}>
+            <Check size={14} aria-hidden />
+            Usar como wallpaper
+          </button>
+        </div>
       </div>
     </div>
   );
