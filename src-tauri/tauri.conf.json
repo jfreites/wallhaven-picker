@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "wallhaven-picker",
+  "productName": "Wallflow",
   "version": "0.1.0",
-  "identifier": "com.jfreites.wallhaven-picker",
+  "identifier": "com.jfreites.wallflow",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,16 +12,24 @@
   "app": {
     "windows": [
       {
-        "title": "wallhaven-picker",
+        "title": "Wallflow",
         "width": 800,
         "height": 630,
         "visible": false,
         "decorations": false,
         "resizable": false,
         "skipTaskbar": true,
-        "alwaysOnTop": true
+        "alwaysOnTop": true,
+        "transparent": true,
+        "shadow": true,
+        "windowEffects": {
+          "effects": ["popover"],
+          "state": "active",
+          "radius": 14
+        }
       }
     ],
+    "macOSPrivateApi": true,
     "security": {
       "csp": null,
       "assetProtocol": {

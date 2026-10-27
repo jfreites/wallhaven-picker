@@ -100,6 +100,15 @@ export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
   await applyWallpaperFromPath(filePath);
 }
 
+// Descarga el wallpaper al almacenamiento local sin aplicarlo.
+export async function saveWallpaper(wallpaper: Wallpaper): Promise<void> {
+  const dir = await ensureAppFolder();
+  const res = await fetch(wallpaper.path);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  const ext = wallpaper.path.split(".").pop();
+  await writeFile(`${dir}/wallhaven-${wallpaper.id}.${ext}`, bytes);
+}
+
 export async function applyLocalWallpaper(filePath: string): Promise<void> {
   await applyWallpaperFromPath(filePath);
 }

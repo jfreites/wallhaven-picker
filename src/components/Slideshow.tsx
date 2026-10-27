@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { Wallpaper } from "../lib/wallhaven";
 
 interface SlideshowProps {
@@ -8,96 +10,109 @@ interface SlideshowProps {
   onApply: (wallpaper: Wallpaper) => void;
 }
 
-export function Slideshow({
-  wallpapers,
-  currentIndex,
-  onClose,
-  onNavigate,
-  onApply,
-}: SlideshowProps) {
+const EXIT_MS = 150;
+
+function SlideImage({ wallpaper, dir }: { wallpaper: Wallpaper; dir: "next" | "prev" }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className={`slideshow__stage slide-${dir}`}>
+      <img
+        className={`slideshow__img${loaded ? " is-loaded" : ""}`}
+        src={wallpaper.thumbs.original}
+        alt={wallpaper.resolution}
+        onLoad={() => setLoaded(true)}
+      />
+    </div>
+  );
+}
+
+export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApply }: SlideshowProps) {
+  const [dir, setDir] = useState<"next" | "prev">("next");
+  const [closing, setClosing] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const current = wallpapers[currentIndex];
-  if (!current) return null;
 
   const goPrev = () => {
+    setDir("prev");
     onNavigate((currentIndex - 1 + wallpapers.length) % wallpapers.length);
   };
-
   const goNext = () => {
+    setDir("next");
     onNavigate((currentIndex + 1) % wallpapers.length);
   };
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(onClose, EXIT_MS);
+  };
 
-  function handleSetWallpaper() {
-    /*
-    try {
-      await setWallpaper(current);
-      alert("Wallpaper aplicado");
-    } catch (err) {
-      console.error("Error al aplicar wallpaper:", err);
-      alert("Error: " + err);
-    }*/
-    onApply(current);
-  }
+  // Foco al abrir y restauración al cerrar.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    rootRef.current?.focus();
+    return () => previous?.focus?.();
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === "Tab" && rootRef.current) {
+        // Trampa de foco dentro del diálogo.
+        const focusables = rootRef.current.querySelectorAll<HTMLElement>("button");
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  });
+
+  if (!current) return null;
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.9)",
-        display: "flex",
-        flexDirection: "column",
-        zIndex: 10,
-      }}
+      ref={rootRef}
+      className={`slideshow${closing ? " is-closing" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Vista previa, ${currentIndex + 1} de ${wallpapers.length}`}
+      tabIndex={-1}
     >
-      <button
-        onClick={onClose}
-        style={{ position: "absolute", top: 12, right: 12, zIndex: 11 }}
-      >
-        Cerrar ✕
+      <SlideImage key={current.id} wallpaper={current} dir={dir} />
+
+      <button type="button" className="slideshow__btn slideshow__close" onClick={close} aria-label="Cerrar (Esc)">
+        <X size={18} />
+      </button>
+      <button type="button" className="slideshow__btn slideshow__nav slideshow__nav--prev" onClick={goPrev} aria-label="Anterior (←)">
+        <ChevronLeft size={22} />
+      </button>
+      <button type="button" className="slideshow__btn slideshow__nav slideshow__nav--next" onClick={goNext} aria-label="Siguiente (→)">
+        <ChevronRight size={22} />
       </button>
 
-      {/* Área de imagen: ocupa todo el espacio disponible menos el footer */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 0, // importante para que el flex no desborde
-          padding: "12px 12px 0",
-        }}
-      >
-        <img
-          src={current.thumbs.original}
-          alt={current.resolution}
-          style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            objectFit: "contain",
-          }}
-        />
-      </div>
-
-      {/* Footer fijo al fondo */}
-      <div
-        style={{
-          flexShrink: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 6,
-          padding: "8px 0 12px",
-          background: "rgba(0,0,0,0.6)",
-        }}
-      >
-        <p style={{ color: "#fff", margin: 0, fontSize: 13 }}>
-          {current.resolution}
-        </p>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={goPrev}>‹ Anterior</button>
-          <button onClick={handleSetWallpaper}>Usar como wallpaper</button>
-          <button onClick={goNext}>Siguiente ›</button>
-        </div>
+      <div className="slideshow__bar">
+        <span className="slideshow__meta" aria-live="polite">
+          {current.resolution} · {currentIndex + 1}/{wallpapers.length}
+        </span>
+        <button type="button" className="btn btn--primary" onClick={() => onApply(current)}>
+          <Check size={14} aria-hidden />
+          Usar como wallpaper
+        </button>
       </div>
     </div>
   );
