@@ -1,0 +1,79 @@
+/* Design tokens de Wallflow. Todo valor visual de los componentes sale de aquí. */
+:root {
+  color-scheme: light dark;
+
+  /* Tipografía */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 20px;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* Espaciado (base 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+
+  /* Radios */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 150ms;
+  --dur-base: 200ms;
+
+  /* Acentos */
+  --accent: #0a84ff;
+  --accent-contrast: #fff;
+  --pro: #bf5af2;
+  --pro-bg: color-mix(in srgb, var(--pro) 16%, transparent);
+  --danger: #ff453a;
+  --success: #30d158;
+
+  /* Superficies y texto (claro). El fondo de la ventana lo da el vibrancy. */
+  --text: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.56);
+  --text-tertiary: rgba(0, 0, 0, 0.36);
+  --surface: rgba(255, 255, 255, 0.55);
+  --surface-hover: rgba(255, 255, 255, 0.8);
+  --surface-sunken: rgba(0, 0, 0, 0.05);
+  --border: rgba(0, 0, 0, 0.1);
+  --segment-active: #fff;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.18);
+  --skeleton-a: rgba(0, 0, 0, 0.06);
+  --skeleton-b: rgba(0, 0, 0, 0.12);
+  --overlay-scrim: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent 60%);
+  --toast-bg: rgba(30, 30, 32, 0.92);
+  --toast-text: #fff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-tertiary: rgba(255, 255, 255, 0.38);
+    --surface: rgba(255, 255, 255, 0.07);
+    --surface-hover: rgba(255, 255, 255, 0.13);
+    --surface-sunken: rgba(0, 0, 0, 0.22);
+    --border: rgba(255, 255, 255, 0.12);
+    --segment-active: rgba(255, 255, 255, 0.18);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --skeleton-a: rgba(255, 255, 255, 0.06);
+    --skeleton-b: rgba(255, 255, 255, 0.12);
+    --toast-bg: rgba(250, 250, 252, 0.92);
+    --toast-text: #111;
+  }
+}

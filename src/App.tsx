@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   searchWallpapers,
@@ -6,74 +6,103 @@ import {
   listLocalWallpapers,
   LocalWallpaper,
   applyLocalWallpaper,
+  deleteLocalWallpaper,
   setWallpaper,
+  saveWallpaper,
   getPrimaryResolution,
   getStorageInfo,
   clearStorage,
-  formatBytes,
   SortingPreset
 } from "./lib/wallhaven";
 import { Slideshow } from "./components/Slideshow";
-import { SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus, BrushCleaning, ArrowBigDown } from "lucide-react";
+import { SegmentedControl } from "./components/SegmentedControl";
+import { IconButton } from "./components/IconButton";
+import { SearchBar } from "./components/SearchBar";
+import { SortChips } from "./components/SortChips";
+import { SourceSelector } from "./components/SourceSelector";
+import { WallpaperCard, SkeletonGrid } from "./components/WallpaperGrid";
+import { EmptyState } from "./components/EmptyState";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { Toast, ToastState } from "./components/Toast";
+import { SOURCES, SourceId } from "./lib/sources";
+import {
+  SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus,
+  ArrowDown, Check, Download, Eye, ImageOff, WifiOff, Trash2,
+} from "lucide-react";
 import { getSettings, saveSettings, Settings } from "./lib/settings";
 import { confirm } from "@tauri-apps/plugin-dialog";
-import "./App.css";
+import "./components/ui.css";
+import "./components/content.css";
 
-type CSSVarStyle = React.CSSProperties & {
-  [key: `--${string}`]: string | number;
-};
+type Tab = "search" | "local" | "settings";
+
+const TABS = [
+  { id: "search" as const, label: "Buscar", icon: <Search size={14} aria-hidden /> },
+  { id: "local" as const, label: "Mis Wallpapers", icon: <WallpaperIcon size={14} aria-hidden /> },
+  { id: "settings" as const, label: "Ajustes", icon: <SettingsIcon size={14} aria-hidden /> },
+];
 
 function App() {
-  const [query, setQuery] = useState("nature");
+  const [query, setQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<"search" | "local" | "settings">("search");
+  const [activeTab, setActiveTab] = useState<Tab>("search");
   const [localWallpapers, setLocalWallpapers] = useState<LocalWallpaper[]>([]);
-  const [applyStatus, setApplyStatus] = useState<"idle" | "applying" | "error">("idle");
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [settings, setSettings] = useState<Settings>({ useResolutionFilter: true });
   const [storageInfo, setStorageInfo] = useState<{ count: number; totalBytes: number } | null>(null);
   const [pinned, setPinned] = useState(false);
   const [sorting, setSorting] = useState<SortingPreset>("date_added");
+  const [source, setSource] = useState<SourceId>(SOURCES[0].id);
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const toastStyle: React.CSSProperties = {
-    position: "fixed",
-    bottom: 12,
-    left: "50%",
-    transform: "translateX(-50%)",
-    background: "#2c3e50",
-    color: "#fff",
-    padding: "6px 14px",
-    borderRadius: 6,
-    fontSize: 13,
-    zIndex: 20,
-  };
-
-  async function handleApplyLocal(path: string) {
-    setApplyStatus("applying");
-    try {
-      await applyLocalWallpaper(path);
-      setApplyStatus("idle");
-    } catch (err) {
-      console.error(err);
-      setApplyStatus("error");
-      setTimeout(() => setApplyStatus("idle"), 2000);
+  function showToast(next: ToastState | null, autoHideMs?: number) {
+    clearTimeout(toastTimer.current);
+    setToast(next);
+    if (next && autoHideMs) {
+      toastTimer.current = setTimeout(() => setToast(null), autoHideMs);
     }
   }
 
-  async function handleApplyRemote(wallpaper: Wallpaper) {
-    setApplyStatus("applying");
+  async function runWithToast(busy: string, done: string, task: () => Promise<void>) {
+    showToast({ kind: "busy", message: busy });
     try {
-      await setWallpaper(wallpaper);
-      setApplyStatus("idle");
+      await task();
+      showToast({ kind: "success", message: done }, 1500);
     } catch (err) {
       console.error(err);
-      setApplyStatus("error");
-      setTimeout(() => setApplyStatus("idle"), 2000);
+      showToast({ kind: "error", message: "Algo salió mal. Inténtalo de nuevo." }, 2000);
     }
   }
+
+  const handleApplyLocal = (path: string) =>
+    runWithToast("Aplicando wallpaper…", "Wallpaper aplicado", () => applyLocalWallpaper(path));
+
+  const handleApplyRemote = (wallpaper: Wallpaper) =>
+    runWithToast("Aplicando wallpaper…", "Wallpaper aplicado", () => setWallpaper(wallpaper));
+
+  async function handleDeleteLocal(path: string) {
+    setPendingDelete(null);
+    try {
+      await deleteLocalWallpaper(path);
+      setLocalWallpapers((prev) => prev.filter((w) => w.path !== path));
+      showToast({ kind: "success", message: "Wallpaper eliminado" }, 1500);
+    } catch (err) {
+      console.error(err);
+      showToast({ kind: "error", message: "No se pudo eliminar." }, 2000);
+    }
+  }
+
+  const handleSave = (wallpaper: Wallpaper) =>
+    runWithToast("Guardando…", "Guardado en Mis Wallpapers", () => saveWallpaper(wallpaper));
 
   useEffect(() => {
     const win = getCurrentWindow();
@@ -92,6 +121,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    setPendingDelete(null);
     if (activeTab === "local") {
       listLocalWallpapers().then(setLocalWallpapers);
     }
@@ -100,6 +130,26 @@ function App() {
       getStorageInfo().then(setStorageInfo);
     }
   }, [activeTab]);
+
+  // ⌘K: ir a Buscar y enfocar la barra.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.metaKey && e.key.toLowerCase() === "k" && selectedIndex === null) {
+        e.preventDefault();
+        setActiveTab("search");
+        setFocusTick((t) => t + 1);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedIndex]);
+
+  useEffect(() => {
+    if (focusTick > 0) {
+      searchRef.current?.focus();
+      searchRef.current?.select();
+    }
+  }, [focusTick]);
 
   async function handleToggleResolutionFilter() {
     const updated = { ...settings, useResolutionFilter: !settings.useResolutionFilter };
@@ -121,6 +171,8 @@ function App() {
 
   async function runSearch(pageToLoad: number, append: boolean, searchQuery: string) {
     setLoading(true);
+    setLoadingMore(append);
+    setSearchFailed(false);
     try {
       const atleast = settings.useResolutionFilter
         ? await getPrimaryResolution() ?? undefined
@@ -129,18 +181,17 @@ function App() {
       setWallpapers((prev) => (append ? [...prev, ...results] : results));
       setPage(pageToLoad);
       setActiveQuery(searchQuery);
+    } catch (err) {
+      console.error(err);
+      setSearchFailed(true);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSearch() {
     await runSearch(1, false, query);
-  }
-
-  function handlePresetClick(value: SortingPreset) {
-    setSorting(value);
   }
 
   useEffect(() => {
@@ -162,239 +213,164 @@ function App() {
     await saveSettings(updated);
   }
 
-  const presets: { label: string; value: SortingPreset, color: string }[] = [
-    { label: "Latest", value: "date_added", color: "#ad3" },
-    { label: "Hot", value: "hot", color: "#f43" },
-    { label: "Toplist", value: "toplist", color: "#b760f0" },
-    { label: "Random", value: "random", color: "#e73" },
-  ];
-
-  function getTagButtonStyle(active: boolean, color: string): CSSVarStyle {
-    return {
-      fontWeight: active ? "bold" : "normal",
-      color: color,
-      borderColor: color,
-      '--hover-color': color,
-    };
-  }
+  const showSkeleton = loading && !loadingMore;
 
   return (
-    <div style={{ padding: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setActiveTab("search")}
-            style={{
-              fontWeight: activeTab === "search" ? "bold" : "normal",
-              display: "flex",
-              alignItems: "center",
-              gap: 4
-            }}
-          >
-            <Search size={18} />
-            <span>Buscar</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("local")}
-            style={{
-              fontWeight: activeTab === "local" ? "bold" : "normal",
-              display: "flex",
-              alignItems: "center",
-              gap: 4
-            }}
-          >
-            <WallpaperIcon size={18} />
-            <span>Mis Wallpapers</span>
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={() => setActiveTab("settings")}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              display: "flex",
-              alignItems: "center",
-            }}
-            aria-label="Ajustes"
-          >
-            <SettingsIcon size={18} />
-          </button>
-
-          <button
+    <div className="app">
+      <header className="titlebar">
+        <SegmentedControl
+          label="Secciones"
+          idPrefix="nav"
+          items={TABS}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
+        <div className="titlebar__actions">
+          <IconButton
+            label={pinned ? "Desfijar ventana" : "Fijar ventana"}
+            pressed={pinned}
+            active={pinned}
             onClick={() => setPinned((p) => !p)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              display: "flex",
-              alignItems: "center",
-              color: pinned ? "#3498db" : "inherit",
-            }}
-            aria-label={pinned ? "Desfijar ventana" : "Fijar ventana"}
           >
-            {pinned ? <Pin size={18} /> : <PinOff size={18} />}
-          </button>
-
-          <button
-            onClick={handleCloseWindow}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: 4,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <Minus size={18} />
-          </button>
+            {pinned ? <Pin size={16} /> : <PinOff size={16} />}
+          </IconButton>
+          <IconButton label="Ocultar ventana" onClick={handleCloseWindow}>
+            <Minus size={16} />
+          </IconButton>
         </div>
-      </div>
+      </header>
 
-      {activeTab === "search" && (
-        <>
-          <form onSubmit={handleSearch} style={{ display: "flex", gap: 4 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="keyword..."
+      <section
+        className="panel"
+        role="tabpanel"
+        id="nav-panel-search"
+        aria-labelledby="nav-tab-search"
+        hidden={activeTab !== "search"}
+      >
+        <div className="toolbar">
+          <SearchBar ref={searchRef} value={query} onChange={setQuery} onSubmit={handleSearch} />
+          <div className="toolbar__row">
+            <SourceSelector value={source} onChange={setSource} />
+            <SortChips value={sorting} onChange={setSorting} />
+          </div>
+        </div>
+
+        <div className="scroll" aria-busy={loading}>
+          {!showSkeleton && searchFailed && wallpapers.length === 0 ? (
+            <EmptyState
+              icon={<WifiOff size={26} />}
+              title="No se pudo conectar con Wallhaven"
+              text="Revisa tu conexión y vuelve a intentarlo."
+              action={<button type="button" className="btn" onClick={handleSearch}>Reintentar</button>}
             />
-            <button type="submit" style={{ border: "none", backgroundImage: 'linear-gradient(to rigth, #4880EC, #019CAD)', color: "#CCCCCC" }}>Buscar</button>
-          </form>
-
-          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            {presets.map((p) => (
-              <button
-                key={p.value}
-                onClick={() => handlePresetClick(p.value)}
-                className="tag-button"
-                style={getTagButtonStyle(sorting === p.value, p.color)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
-          {loading && <p>Cargando...</p>}
-
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 8,
-            marginTop: 20,
-            maxHeight: 340,
-            overflowY: "auto",
-          }}>
-            {wallpapers.map((w) => (
-              <img
-                key={w.id}
-                src={w.thumbs.small}
-                alt={w.resolution}
-                onClick={() => setSelectedIndex(wallpapers.indexOf(w))}
-                style={{ width: "100%", borderRadius: 4, cursor: "pointer" }}
-              />
-            ))}
-          </div>
-
-          {wallpapers.length > 0 && (
-            <button
-              onClick={handleLoadMore}
-              disabled={loading}
-              style={{ marginTop: 8, 
-                display: "flex",
-                alignItems: "center",
-                gap: 4
-              }}>
-                <ArrowBigDown size={18} />
-                <span>
-                  {loading ? "Cargando..." : "Cargar más"}
-                </span>
-            </button>
+          ) : !showSkeleton && wallpapers.length === 0 ? (
+            <EmptyState
+              icon={<ImageOff size={26} />}
+              title="Sin resultados"
+              text="Prueba con otra palabra clave o cambia el orden."
+            />
+          ) : (
+            <>
+              <div className="grid">
+                {showSkeleton ? (
+                  <SkeletonGrid />
+                ) : (
+                  wallpapers.map((w, i) => (
+                    <WallpaperCard
+                      key={w.id}
+                      src={w.thumbs.small}
+                      alt={w.resolution}
+                      detail={w.resolution}
+                      attribution={{ source: SOURCES[0].label }}
+                      openLabel={`Ver wallpaper ${w.resolution}`}
+                      onOpen={() => setSelectedIndex(i)}
+                      actions={[
+                        { label: "Aplicar", icon: <Check size={14} />, onClick: () => handleApplyRemote(w) },
+                        { label: "Guardar", icon: <Download size={14} />, onClick: () => handleSave(w) },
+                        { label: "Ver", icon: <Eye size={14} />, onClick: () => setSelectedIndex(i) },
+                      ]}
+                    />
+                  ))
+                )}
+                {loadingMore && <SkeletonGrid count={4} />}
+              </div>
+              {!showSkeleton && wallpapers.length > 0 && (
+                <div className="load-more">
+                  <button type="button" className="btn" onClick={handleLoadMore} disabled={loading}>
+                    <ArrowDown size={14} aria-hidden />
+                    {loadingMore ? "Cargando…" : "Cargar más"}
+                  </button>
+                </div>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+      </section>
 
       {activeTab === "local" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 8,
-            maxHeight: 340,
-            overflowY: "auto",
-          }}
+        <section
+          className="panel"
+          role="tabpanel"
+          id="nav-panel-local"
+          aria-labelledby="nav-tab-local"
         >
-          {localWallpapers.map((w) => (
-            <img
-              key={w.path}
-              src={w.url}
-              alt={w.name}
-              onClick={() => handleApplyLocal(w.path)}
-              style={{ width: "100%", borderRadius: 4, cursor: "pointer" }}
-            />
-          ))}
-        </div>
+          <div className="scroll">
+            {localWallpapers.length === 0 ? (
+              <EmptyState
+                icon={<WallpaperIcon size={26} />}
+                title="Aún no tienes wallpapers"
+                text="Los que apliques o guardes desde Buscar aparecerán aquí."
+                action={
+                  <button type="button" className="btn btn--primary" onClick={() => setActiveTab("search")}>
+                    Explorar wallpapers
+                  </button>
+                }
+              />
+            ) : (
+              <div className="grid">
+                {localWallpapers.map((w) => (
+                  <WallpaperCard
+                    key={w.path}
+                    src={w.url}
+                    alt={w.name}
+                    openLabel={`Aplicar ${w.name}`}
+                    onOpen={() => handleApplyLocal(w.path)}
+                    actions={[
+                      { label: "Aplicar", icon: <Check size={14} />, onClick: () => handleApplyLocal(w.path) },
+                      { label: "Eliminar", icon: <Trash2 size={14} />, onClick: () => setPendingDelete(w.path) },
+                    ]}
+                    confirm={{
+                      active: pendingDelete === w.path,
+                      message: "¿Eliminar este wallpaper?",
+                      confirmLabel: "Eliminar",
+                      onConfirm: () => handleDeleteLocal(w.path),
+                      onCancel: () => setPendingDelete(null),
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {activeTab === "settings" && (
-        <div>
-          <h3>Ajustes</h3>
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="checkbox"
-              checked={settings.useResolutionFilter}
-              onChange={handleToggleResolutionFilter}
+        <section
+          className="panel"
+          role="tabpanel"
+          id="nav-panel-settings"
+          aria-labelledby="nav-tab-settings"
+        >
+          <div className="scroll">
+            <SettingsPanel
+              settings={settings}
+              storageInfo={storageInfo}
+              onToggleResolutionFilter={handleToggleResolutionFilter}
+              onApiKeyChange={handleApiKeyChange}
+              onClearStorage={handleClearStorage}
             />
-            Filtrar por resolución de mi pantalla
-          </label>
-          <hr style={{ backgroundColor: "#dfdfdf", border: "none", height: "2px" }} />
-          <div style={{ marginTop: 16 }}>
-            <label style={{ display: "block", marginBottom: 4 }}>
-              API Key de Wallhaven (opcional)
-            </label>
-            <input
-              type="password"
-              value={settings.apiKey ?? ""}
-              onChange={handleApiKeyChange}
-              placeholder="Pega tu API key aquí"
-              style={{ width: "400px" }}
-            />
-            <p style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-              Desbloquea NSFW/Sketchy y mejores límites de resultados.{" "}
-              <a
-                href="https://wallhaven.cc/settings/account"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Consigue la tuya aquí
-              </a>
-            </p>
           </div>
-          <hr style={{ backgroundColor: "#dfdfdf", border: "none", height: "2px" }} />
-          <div style={{ marginTop: 16 }}>
-            <p style={{ margin: "0 0 8px" }}>
-              {storageInfo
-                ? `${storageInfo.count} wallpapers guardados (${formatBytes(storageInfo.totalBytes)})`
-                : "Calculando..."}
-            </p>
-            <button
-              onClick={handleClearStorage}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4
-              }}
-              >
-              <BrushCleaning size={18} />
-              <span>Limpiar almacenamiento</span>
-            </button>
-          </div>
-        </div>
+        </section>
       )}
 
       {selectedIndex !== null && (
@@ -407,14 +383,7 @@ function App() {
         />
       )}
 
-      {applyStatus === "applying" && (
-        <div style={toastStyle}>Aplicando wallpaper...</div>
-      )}
-      {applyStatus === "error" && (
-        <div style={{ ...toastStyle, background: "#c0392b" }}>
-          Error al aplicar wallpaper
-        </div>
-      )}
+      <Toast toast={toast} />
     </div>
   );
 }
