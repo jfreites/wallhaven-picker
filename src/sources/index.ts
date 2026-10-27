@@ -1,9 +1,10 @@
 import type { SourceId, WallpaperSource } from "./types";
 import { wallhaven } from "./wallhaven";
 import { artic } from "./artic";
+import { nasa } from "./nasa";
 
 /** Para sumar una fuente: importarla aquí y agregarla a la lista. */
-export const SOURCES: WallpaperSource[] = [wallhaven, artic];
+export const SOURCES: WallpaperSource[] = [wallhaven, artic, nasa];
 
 export const DEFAULT_SOURCE_ID: SourceId = SOURCES[0].id;
 

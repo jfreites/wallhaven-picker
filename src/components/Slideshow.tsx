@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Check, X } from "lucide-react";
 import { getSource } from "../sources";
 import type { Wallpaper } from "../sources";
-import { creditFor } from "../lib/attribution";
+import { creditFor, sizeLabel, altFor } from "../lib/attribution";
+import { getPrimaryResolution } from "../lib/storage";
 import { SourceImage } from "./SourceImage";
 
 interface SlideshowProps {
@@ -24,7 +25,7 @@ function SlideImage({ wallpaper, dir }: { wallpaper: Wallpaper; dir: "next" | "p
         sourceId={wallpaper.sourceId}
         eager
         src={wallpaper.previewUrl}
-        alt={`${wallpaper.width}×${wallpaper.height}`}
+        alt={altFor(wallpaper)}
         onLoad={() => setLoaded(true)}
       />
     </div>
@@ -36,6 +37,9 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
   const [closing, setClosing] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const current = wallpapers[currentIndex];
+  // Fuentes con resolveFull: dimensiones y URL final se completan al abrir cada imagen.
+  const [resolved, setResolved] = useState<Record<string, Wallpaper>>({});
+  const [screen, setScreen] = useState<[number, number] | null>(null);
 
   const goPrev = () => {
     setDir("prev");
@@ -50,6 +54,24 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
     setClosing(true);
     setTimeout(onClose, EXIT_MS);
   };
+
+  useEffect(() => {
+    getPrimaryResolution()
+      .then((r) => r && setScreen(r.split("x").map(Number) as [number, number]))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const resolveFull = current && getSource(current.sourceId).resolveFull;
+    if (!current || !resolveFull || resolved[current.id]) return;
+    let cancelled = false;
+    resolveFull(current)
+      .then((r) => !cancelled && setResolved((prev) => ({ ...prev, [r.id]: r })))
+      .catch(() => {}); // el aviso es opcional; descargar/aplicar reintenta y reporta el error
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.id]);
 
   // Foco al abrir y restauración al cerrar.
   useEffect(() => {
@@ -88,7 +110,15 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
   });
 
   if (!current) return null;
+  const shown = resolved[current.id] ?? current;
   const credit = creditFor(current);
+  const isVertical = !!shown.width && shown.height > shown.width;
+  const isSmall = !!shown.width && !!screen && (shown.width < screen[0] || shown.height < screen[1]);
+  const warning = isVertical
+    ? "Vertical: no sirve como wallpaper"
+    : isSmall
+      ? `Menor que tu pantalla (${screen![0]}×${screen![1]})`
+      : undefined;
   const sourceName = getSource(current.sourceId).name;
 
   return (
@@ -123,12 +153,19 @@ export function Slideshow({ wallpapers, currentIndex, onClose, onNavigate, onApp
             {current.author && <> · <a href={current.pageUrl} target="_blank" rel="noreferrer">{sourceName}</a></>}
             {current.license && <> · {current.license}</>}
           </span>
+          {warning && <span className="slideshow__warn" role="status">{warning}</span>}
         </div>
         <div className="slideshow__right">
           <span className="slideshow__meta" aria-live="polite">
-            {current.width}×{current.height} · {currentIndex + 1}/{wallpapers.length}
+            {sizeLabel(shown) && `${sizeLabel(shown)} · `}{currentIndex + 1}/{wallpapers.length}
           </span>
-          <button type="button" className="btn btn--primary" onClick={() => onApply(current)}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={isVertical}
+            title={isVertical ? warning : undefined}
+            onClick={() => onApply(current)}
+          >
             <Check size={14} aria-hidden />
             Usar como wallpaper
           </button>

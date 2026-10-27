@@ -39,6 +39,7 @@
   --pro: #bf5af2;
   --pro-bg: color-mix(in srgb, var(--pro) 16%, transparent);
   --danger: #ff453a;
+  --warning: #ff9f0a;
   --success: #30d158;
 
   /* Superficies y texto (claro). El fondo de la ventana lo da el vibrancy. */

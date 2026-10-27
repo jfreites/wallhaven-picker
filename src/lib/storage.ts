@@ -1,5 +1,5 @@
 import { sourceFetch } from "../sources/http";
-import { getSource } from "../sources";
+import { getSource, SourceError } from "../sources";
 import type { Wallpaper } from "../sources";
 import { getLibrary, recordWallpaper, forgetWallpaper, clearLibrary } from "./library";
 import { Command } from "@tauri-apps/plugin-shell";
@@ -60,29 +60,51 @@ async function applyWallpaperFromPath(filePath: string): Promise<void> {
   await command.execute();
 }
 
-// Descarga la imagen completa al almacenamiento local y devuelve su ruta.
-async function downloadWallpaper(wallpaper: Wallpaper): Promise<string> {
+// Descarga la imagen completa al almacenamiento local. Devuelve un aviso opcional.
+async function downloadWallpaper(wallpaper: Wallpaper): Promise<{ path: string; warning?: string }> {
   const dir = await ensureAppFolder();
   const source = getSource(wallpaper.sourceId);
+
+  // Fuentes que solo conocen URL final y dimensiones al resolver: validar antes de bajar nada.
+  let warning: string | undefined;
+  if (source.resolveFull) {
+    wallpaper = await source.resolveFull(wallpaper);
+    if (wallpaper.width && wallpaper.height > wallpaper.width) {
+      throw new SourceError("unsuitable", source.name);
+    }
+    warning = await undersizedWarning(wallpaper);
+  }
 
   const res = await sourceFetch(source.name, wallpaper.fullUrl, { headers: source.requestHeaders });
   const bytes = new Uint8Array(await res.arrayBuffer());
 
   const ext = wallpaper.fullUrl.split(".").pop();
-  const fileName = `${wallpaper.sourceId}-${wallpaper.id}.${ext}`;
+  const fileName = `${wallpaper.sourceId}-${wallpaper.id.replace(/[^\w.-]+/g, "_")}.${ext}`;
 
   await writeFile(`${dir}/${fileName}`, bytes);
   await recordWallpaper(fileName, wallpaper);
-  return `${dir}/${fileName}`;
+  return { path: `${dir}/${fileName}`, warning };
 }
 
-export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
-  await applyWallpaperFromPath(await downloadWallpaper(wallpaper));
+export async function undersizedWarning(w: Wallpaper): Promise<string | undefined> {
+  const screen = await getPrimaryResolution();
+  if (!screen || !w.width) return undefined;
+  const [sw, sh] = screen.split("x").map(Number);
+  return w.width < sw || w.height < sh
+    ? `Es menor que tu pantalla (${w.width}×${w.height} vs ${sw}×${sh})`
+    : undefined;
+}
+
+/** Aplica el wallpaper; devuelve un aviso si la imagen no es ideal para la pantalla. */
+export async function setWallpaper(wallpaper: Wallpaper): Promise<string | undefined> {
+  const { path, warning } = await downloadWallpaper(wallpaper);
+  await applyWallpaperFromPath(path);
+  return warning;
 }
 
 // Descarga el wallpaper al almacenamiento local sin aplicarlo.
-export async function saveWallpaper(wallpaper: Wallpaper): Promise<void> {
-  await downloadWallpaper(wallpaper);
+export async function saveWallpaper(wallpaper: Wallpaper): Promise<string | undefined> {
+  return (await downloadWallpaper(wallpaper)).warning;
 }
 
 export async function applyLocalWallpaper(filePath: string): Promise<void> {

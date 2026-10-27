@@ -1,4 +1,4 @@
-export type SourceErrorKind = "rate_limit" | "offline" | "auth" | "http";
+export type SourceErrorKind = "rate_limit" | "offline" | "auth" | "http" | "unsuitable";
 
 export class SourceError extends Error {
   constructor(
@@ -35,6 +35,8 @@ export function describeError(err: unknown, fallbackName = "la fuente"): ErrorMe
       return { title: "Sin conexión", text: `No se pudo contactar a ${name}. Revisa tu conexión a internet.` };
     case "auth":
       return { title: `${name} rechazó la solicitud`, text: "Si usas una API key, revísala en Ajustes." };
+    case "unsuitable":
+      return { title: "Imagen no apta como wallpaper", text: "Es vertical. Elige una imagen horizontal." };
     default:
       return {
         title: `No se pudo cargar ${name}`,

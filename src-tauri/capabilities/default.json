@@ -106,6 +106,12 @@
         },
         {
           "url": "https://www.artic.edu/iiif/*"
+        },
+        {
+          "url": "https://images-api.nasa.gov/*"
+        },
+        {
+          "url": "https://images-assets.nasa.gov/*"
         }
       ]
     },

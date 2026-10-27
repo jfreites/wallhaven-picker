@@ -10,6 +10,7 @@ export interface Wallpaper {
   /** Imagen intermedia para el slideshow (evita bajar la completa solo para ver). */
   previewUrl: string;
   fullUrl: string;
+  /** 0 si la fuente aún no conoce las dimensiones (ver `resolveFull`). */
   width: number;
   height: number;
   pageUrl: string;
@@ -52,4 +53,9 @@ export interface WallpaperSource {
   search(query: string, page: number, filters: SearchFilters): Promise<SearchResult>;
   /** Contenido a mostrar cuando no hay búsqueda. */
   featured?(page: number, filters: SearchFilters): Promise<SearchResult>;
+  /**
+   * Completa lo que la búsqueda no trae (URL de alta resolución, dimensiones).
+   * Se llama solo al abrir el slideshow, descargar o aplicar; nunca para todo el grid.
+   */
+  resolveFull?(wallpaper: Wallpaper): Promise<Wallpaper>;
 }

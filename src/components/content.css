@@ -155,6 +155,7 @@
 .slideshow__credit { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-sm); }
 .slideshow__credit a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
 .slideshow__credit-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: 0.85; }
+.slideshow__warn { color: var(--warning); font-weight: var(--weight-medium); }
 .slideshow__right { display: flex; align-items: center; gap: var(--space-3); flex: none; }
 .slideshow__meta { font-size: var(--text-sm); opacity: 0.8; font-variant-numeric: tabular-nums; }
 @keyframes fade-in { from { opacity: 0; } }

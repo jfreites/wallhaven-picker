@@ -18,7 +18,7 @@ import {
   SourceError,
 } from "./sources";
 import type { Wallpaper, SearchFilters, SortingPreset, SourceId } from "./sources";
-import { creditFor } from "./lib/attribution";
+import { creditFor, sizeLabel, altFor } from "./lib/attribution";
 import { Slideshow } from "./components/Slideshow";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { IconButton } from "./components/IconButton";
@@ -79,11 +79,15 @@ function App() {
     }
   }
 
-  async function runWithToast(busy: string, done: string, task: () => Promise<void>) {
+  async function runWithToast(busy: string, done: string, task: () => Promise<string | void>) {
     showToast({ kind: "busy", message: busy });
     try {
-      await task();
-      showToast({ kind: "success", message: done }, 1500);
+      const warning = await task();
+      if (warning) {
+        showToast({ kind: "warning", message: `${done}. ${warning}` }, 4500);
+      } else {
+        showToast({ kind: "success", message: done }, 1500);
+      }
     } catch (err) {
       console.error(err);
       const message = err instanceof SourceError ? describeError(err).title : "Algo salió mal. Inténtalo de nuevo.";
@@ -344,10 +348,10 @@ function App() {
                       key={`${w.sourceId}-${w.id}`}
                       src={w.thumbUrl}
                       sourceId={w.sourceId}
-                      alt={`${w.width}×${w.height}`}
-                      detail={`${w.width}×${w.height}`}
+                      alt={altFor(w)}
+                      detail={sizeLabel(w)}
                       attribution={creditFor(w)}
-                      openLabel={`Ver wallpaper ${w.width}×${w.height}`}
+                      openLabel={`Ver wallpaper ${altFor(w)}`}
                       onOpen={() => setSelectedIndex(i)}
                       actions={[
                         { label: "Aplicar", icon: <Check size={14} />, onClick: () => handleApplyRemote(w) },
@@ -398,7 +402,7 @@ function App() {
                     key={w.path}
                     src={w.url}
                     alt={w.name}
-                    detail={w.wallpaper ? `${w.wallpaper.width}×${w.wallpaper.height}` : undefined}
+                    detail={w.wallpaper ? sizeLabel(w.wallpaper) : undefined}
                     attribution={w.wallpaper ? creditFor(w.wallpaper) : undefined}
                     openLabel={`Aplicar ${w.name}`}
                     onOpen={() => handleApplyLocal(w.path)}
