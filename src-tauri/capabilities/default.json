@@ -100,6 +100,18 @@
         },
         {
           "url": "https://th.wallhaven.cc/*"
+        },
+        {
+          "url": "https://api.artic.edu/*"
+        },
+        {
+          "url": "https://www.artic.edu/iiif/*"
+        },
+        {
+          "url": "https://images-api.nasa.gov/*"
+        },
+        {
+          "url": "https://images-assets.nasa.gov/*"
         }
       ]
     },

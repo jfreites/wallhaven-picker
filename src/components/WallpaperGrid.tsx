@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { Attribution } from "../lib/sources";
+import type { Credit } from "../lib/attribution";
+import { SourceImage } from "./SourceImage";
 
 export interface CardAction {
   label: string;
@@ -9,29 +10,42 @@ export interface CardAction {
 
 interface WallpaperCardProps {
   src: string;
+  /** Fuente de la imagen, si requiere cargarse con headers propios. */
+  sourceId?: string;
   alt: string;
   /** Acción principal al pulsar la imagen. */
   onOpen: () => void;
   openLabel: string;
   actions: CardAction[];
   /** Espacio de atribución (autor/fuente); aparece en el overlay. */
-  attribution?: Attribution;
+  attribution?: Credit;
   detail?: string;
   /** Confirmación inline para acciones destructivas (p. ej. eliminar). */
   confirm?: { active: boolean; message: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void };
 }
 
-export function WallpaperCard({ src, alt, onOpen, openLabel, actions, attribution, detail, confirm }: WallpaperCardProps) {
+export function WallpaperCard({ src, sourceId, alt, onOpen, openLabel, actions, attribution, detail, confirm }: WallpaperCardProps) {
   return (
     <div className="card">
       <button type="button" className="card__image-btn" onClick={onOpen} aria-label={openLabel}>
-        <img className="card__image" src={src} alt={alt} loading="lazy" draggable={false} />
+        <SourceImage className="card__image" src={src} sourceId={sourceId} alt={alt} />
       </button>
       <div className="card__overlay">
         <div className="card__attribution">
-          <span className="card__source">
-            {attribution ? attribution.author ?? attribution.source : ""}
-          </span>
+          {attribution &&
+            (attribution.href ? (
+              <a
+                className="card__source"
+                href={attribution.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${attribution.label} (se abre en el navegador)`}
+              >
+                {attribution.label}
+              </a>
+            ) : (
+              <span className="card__source">{attribution.label}</span>
+            ))}
           <span className="card__detail">{detail}</span>
         </div>
         <div className="card__actions">

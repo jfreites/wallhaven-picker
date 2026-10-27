@@ -1,5 +1,5 @@
 export interface ToastState {
-  kind: "busy" | "success" | "error";
+  kind: "busy" | "success" | "warning" | "error";
   message: string;
 }
 

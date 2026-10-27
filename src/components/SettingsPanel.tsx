@@ -1,6 +1,6 @@
 import { BrushCleaning, Layers, Monitor, RefreshCw } from "lucide-react";
 import { Settings } from "../lib/settings";
-import { formatBytes } from "../lib/wallhaven";
+import { formatBytes } from "../lib/storage";
 import { LockedFeature } from "./LockedFeature";
 import { Switch } from "./Switch";
 
@@ -27,7 +27,7 @@ export function SettingsPanel({
           <div className="settings__row">
             <div className="settings__label">
               <span>Filtrar por resolución de mi pantalla</span>
-              <span className="settings__hint">Muestra solo wallpapers que cubren tu monitor principal.</span>
+              <span className="settings__hint">Muestra solo wallpapers que cubren tu monitor principal, en las fuentes que lo soportan.</span>
             </div>
             <Switch
               checked={settings.useResolutionFilter}

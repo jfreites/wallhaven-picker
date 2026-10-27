@@ -1,4 +1,4 @@
-import type { SortingPreset } from "../lib/wallhaven";
+import type { SortingPreset } from "../sources";
 
 export const SORT_PRESETS: { label: string; value: SortingPreset; color: string }[] = [
   { label: "Latest", value: "date_added", color: "#a3d633" },

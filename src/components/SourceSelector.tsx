@@ -1,4 +1,4 @@
-import { SOURCES, SourceId } from "../lib/sources";
+import { SOURCES, SourceId } from "../sources";
 import { SegmentedControl } from "./SegmentedControl";
 
 interface SourceSelectorProps {
@@ -13,12 +13,7 @@ export function SourceSelector({ value, onChange }: SourceSelectorProps) {
       label="Fuente de wallpapers"
       value={value}
       onChange={onChange}
-      items={SOURCES.map((s) => ({
-        id: s.id,
-        label: s.label,
-        disabled: !s.enabled,
-        hint: s.enabled ? undefined : `${s.label}: próximamente`,
-      }))}
+      items={SOURCES.map((s) => ({ id: s.id, label: s.name }))}
     />
   );
 }

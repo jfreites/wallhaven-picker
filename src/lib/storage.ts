@@ -1,18 +1,12 @@
-import { fetch } from "@tauri-apps/plugin-http";
+import { sourceFetch } from "../sources/http";
+import { getSource, SourceError } from "../sources";
+import type { Wallpaper } from "../sources";
+import { getLibrary, recordWallpaper, forgetWallpaper, clearLibrary } from "./library";
 import { Command } from "@tauri-apps/plugin-shell";
 import { homeDir } from "@tauri-apps/api/path";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { mkdir, exists, readDir , writeFile, stat, remove } from "@tauri-apps/plugin-fs";
 import { primaryMonitor } from "@tauri-apps/api/window";
-
-export type SortingPreset = "date_added" | "hot" | "toplist" | "random";
-
-export interface Wallpaper {
-  id: string;
-  path: string;
-  thumbs: { small: string; original: string };
-  resolution: string;
-}
 
 export async function getPrimaryResolution(): Promise<string | null> {
   const monitor = await primaryMonitor();
@@ -26,12 +20,14 @@ export interface LocalWallpaper {
   name: string;
   path: string;
   url: string; // URL usable for <img src>
+  /** Metadatos de origen, si el archivo se descargó desde Wallflow. */
+  wallpaper?: Wallpaper;
 }
 
 export async function listLocalWallpapers(): Promise<LocalWallpaper[]> {
   const dir = await ensureAppFolder();
 
-  const entries = await readDir(dir);
+  const [entries, library] = await Promise.all([readDir(dir), getLibrary()]);
   return entries
     .filter((e) => !e.isDirectory)
     .map((e) => {
@@ -40,30 +36,9 @@ export async function listLocalWallpapers(): Promise<LocalWallpaper[]> {
         name: e.name!,
         path: fullPath,
         url: convertFileSrc(fullPath),
+        wallpaper: library[e.name!],
       };
     });
-}
-
-export async function searchWallpapers(
-  query: string,
-  atleast?: string,
-  sorting: SortingPreset = "date_added",
-  page: number = 1,
-  apiKey?: string
-): Promise<Wallpaper[]> {
-  const params = new URLSearchParams({
-    q: query,
-    sorting,
-    page: String(page),
-  });
-  if (atleast) params.set("atleast", atleast);
-  if (apiKey) params.set("apikey", apiKey);
-
-  const res = await fetch(
-    `https://wallhaven.cc/api/v1/search?${params.toString()}`
-  );
-  const json = await res.json();
-  return json.data;
 }
 
 export async function ensureAppFolder(): Promise<string> {
@@ -85,28 +60,51 @@ async function applyWallpaperFromPath(filePath: string): Promise<void> {
   await command.execute();
 }
 
-export async function setWallpaper(wallpaper: Wallpaper): Promise<void> {
+// Descarga la imagen completa al almacenamiento local. Devuelve un aviso opcional.
+async function downloadWallpaper(wallpaper: Wallpaper): Promise<{ path: string; warning?: string }> {
   const dir = await ensureAppFolder();
+  const source = getSource(wallpaper.sourceId);
 
-  // Download the image
-  const res = await fetch(wallpaper.path);
-  const arrayBuffer = await res.arrayBuffer();
-  const bytes = new Uint8Array(arrayBuffer);
+  // Fuentes que solo conocen URL final y dimensiones al resolver: validar antes de bajar nada.
+  let warning: string | undefined;
+  if (source.resolveFull) {
+    wallpaper = await source.resolveFull(wallpaper);
+    if (wallpaper.width && wallpaper.height > wallpaper.width) {
+      throw new SourceError("unsuitable", source.name);
+    }
+    warning = await undersizedWarning(wallpaper);
+  }
 
-  const ext = wallpaper.path.split(".").pop();
-  const filePath = `${dir}/wallhaven-${wallpaper.id}.${ext}`;
+  const res = await sourceFetch(source.name, wallpaper.fullUrl, { headers: source.requestHeaders });
+  const bytes = new Uint8Array(await res.arrayBuffer());
 
-  await writeFile(filePath, bytes);
-  await applyWallpaperFromPath(filePath);
+  const ext = wallpaper.fullUrl.split(".").pop();
+  const fileName = `${wallpaper.sourceId}-${wallpaper.id.replace(/[^\w.-]+/g, "_")}.${ext}`;
+
+  await writeFile(`${dir}/${fileName}`, bytes);
+  await recordWallpaper(fileName, wallpaper);
+  return { path: `${dir}/${fileName}`, warning };
+}
+
+export async function undersizedWarning(w: Wallpaper): Promise<string | undefined> {
+  const screen = await getPrimaryResolution();
+  if (!screen || !w.width) return undefined;
+  const [sw, sh] = screen.split("x").map(Number);
+  return w.width < sw || w.height < sh
+    ? `Es menor que tu pantalla (${w.width}×${w.height} vs ${sw}×${sh})`
+    : undefined;
+}
+
+/** Aplica el wallpaper; devuelve un aviso si la imagen no es ideal para la pantalla. */
+export async function setWallpaper(wallpaper: Wallpaper): Promise<string | undefined> {
+  const { path, warning } = await downloadWallpaper(wallpaper);
+  await applyWallpaperFromPath(path);
+  return warning;
 }
 
 // Descarga el wallpaper al almacenamiento local sin aplicarlo.
-export async function saveWallpaper(wallpaper: Wallpaper): Promise<void> {
-  const dir = await ensureAppFolder();
-  const res = await fetch(wallpaper.path);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  const ext = wallpaper.path.split(".").pop();
-  await writeFile(`${dir}/wallhaven-${wallpaper.id}.${ext}`, bytes);
+export async function saveWallpaper(wallpaper: Wallpaper): Promise<string | undefined> {
+  return (await downloadWallpaper(wallpaper)).warning;
 }
 
 export async function applyLocalWallpaper(filePath: string): Promise<void> {
@@ -115,6 +113,7 @@ export async function applyLocalWallpaper(filePath: string): Promise<void> {
 
 export async function deleteLocalWallpaper(filePath: string): Promise<void> {
   await remove(filePath);
+  await forgetWallpaper(filePath.split("/").pop()!);
 }
 
 export async function getStorageInfo(): Promise<{ count: number; totalBytes: number }> {
@@ -139,6 +138,7 @@ export async function clearStorage(): Promise<void> {
   for (const file of files) {
     await remove(`${dir}/${file.name}`);
   }
+  await clearLibrary();
 }
 
 export function formatBytes(bytes: number): string {

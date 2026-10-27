@@ -195,6 +195,7 @@
   animation: toast-in var(--dur-base) var(--ease);
 }
 .toast--error { background: var(--danger); color: #fff; }
+.toast--warning { background: var(--warning); color: #1a1100; max-width: 90%; }
 .spinner {
   width: 12px;
   height: 12px;
