@@ -17,9 +17,11 @@ interface WallpaperCardProps {
   /** Espacio de atribución (autor/fuente); aparece en el overlay. */
   attribution?: Attribution;
   detail?: string;
+  /** Confirmación inline para acciones destructivas (p. ej. eliminar). */
+  confirm?: { active: boolean; message: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void };
 }
 
-export function WallpaperCard({ src, alt, onOpen, openLabel, actions, attribution, detail }: WallpaperCardProps) {
+export function WallpaperCard({ src, alt, onOpen, openLabel, actions, attribution, detail, confirm }: WallpaperCardProps) {
   return (
     <div className="card">
       <button type="button" className="card__image-btn" onClick={onOpen} aria-label={openLabel}>
@@ -47,6 +49,25 @@ export function WallpaperCard({ src, alt, onOpen, openLabel, actions, attributio
           ))}
         </div>
       </div>
+      {confirm?.active && (
+        <div
+          className="card__confirm"
+          role="alertdialog"
+          aria-label={confirm.message}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              confirm.onCancel();
+            }
+          }}
+        >
+          <p>{confirm.message}</p>
+          <div className="card__confirm-actions">
+            <button type="button" className="btn" autoFocus onClick={confirm.onCancel}>Cancelar</button>
+            <button type="button" className="btn btn--danger" onClick={confirm.onConfirm}>{confirm.confirmLabel}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

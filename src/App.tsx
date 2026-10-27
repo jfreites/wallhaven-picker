@@ -6,6 +6,7 @@ import {
   listLocalWallpapers,
   LocalWallpaper,
   applyLocalWallpaper,
+  deleteLocalWallpaper,
   setWallpaper,
   saveWallpaper,
   getPrimaryResolution,
@@ -26,7 +27,7 @@ import { Toast, ToastState } from "./components/Toast";
 import { SOURCES, SourceId } from "./lib/sources";
 import {
   SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus,
-  ArrowDown, Check, Download, Eye, ImageOff, WifiOff,
+  ArrowDown, Check, Download, Eye, ImageOff, WifiOff, Trash2,
 } from "lucide-react";
 import { getSettings, saveSettings, Settings } from "./lib/settings";
 import { confirm } from "@tauri-apps/plugin-dialog";
@@ -58,6 +59,7 @@ function App() {
   const [sorting, setSorting] = useState<SortingPreset>("date_added");
   const [source, setSource] = useState<SourceId>(SOURCES[0].id);
   const [page, setPage] = useState(1);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [focusTick, setFocusTick] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -87,6 +89,18 @@ function App() {
   const handleApplyRemote = (wallpaper: Wallpaper) =>
     runWithToast("Aplicando wallpaper…", "Wallpaper aplicado", () => setWallpaper(wallpaper));
 
+  async function handleDeleteLocal(path: string) {
+    setPendingDelete(null);
+    try {
+      await deleteLocalWallpaper(path);
+      setLocalWallpapers((prev) => prev.filter((w) => w.path !== path));
+      showToast({ kind: "success", message: "Wallpaper eliminado" }, 1500);
+    } catch (err) {
+      console.error(err);
+      showToast({ kind: "error", message: "No se pudo eliminar." }, 2000);
+    }
+  }
+
   const handleSave = (wallpaper: Wallpaper) =>
     runWithToast("Guardando…", "Guardado en Mis Wallpapers", () => saveWallpaper(wallpaper));
 
@@ -107,6 +121,7 @@ function App() {
   }, []);
 
   useEffect(() => {
+    setPendingDelete(null);
     if (activeTab === "local") {
       listLocalWallpapers().then(setLocalWallpapers);
     }
@@ -322,7 +337,15 @@ function App() {
                     onOpen={() => handleApplyLocal(w.path)}
                     actions={[
                       { label: "Aplicar", icon: <Check size={14} />, onClick: () => handleApplyLocal(w.path) },
+                      { label: "Eliminar", icon: <Trash2 size={14} />, onClick: () => setPendingDelete(w.path) },
                     ]}
+                    confirm={{
+                      active: pendingDelete === w.path,
+                      message: "¿Eliminar este wallpaper?",
+                      confirmLabel: "Eliminar",
+                      onConfirm: () => handleDeleteLocal(w.path),
+                      onCancel: () => setPendingDelete(null),
+                    }}
                   />
                 ))}
               </div>

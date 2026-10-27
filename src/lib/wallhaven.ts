@@ -113,6 +113,10 @@ export async function applyLocalWallpaper(filePath: string): Promise<void> {
   await applyWallpaperFromPath(filePath);
 }
 
+export async function deleteLocalWallpaper(filePath: string): Promise<void> {
+  await remove(filePath);
+}
+
 export async function getStorageInfo(): Promise<{ count: number; totalBytes: number }> {
   const dir = await ensureAppFolder();
   const entries = await readDir(dir);
