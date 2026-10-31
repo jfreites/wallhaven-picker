@@ -19,7 +19,8 @@ pub fn run() {
 
             let quit_item = MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&quit_item])?;
-            let icon = Image::from_bytes(include_bytes!("../icons/tray-iconTemplate.png"))?;
+            // Se usa la versión @2x: tray-icon la dibuja a 18pt, así queda nítida en Retina.
+            let icon = Image::from_bytes(include_bytes!("../icons/tray-iconTemplate@2x.png"))?;
 
             TrayIconBuilder::new()
                 .menu(&menu)
