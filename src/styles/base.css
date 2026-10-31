@@ -1,3 +1,12 @@
+/* Fuente del logotipo (SIL OFL). Solo se usa en el nombre junto al isotipo. */
+@font-face {
+  font-family: "Momo Trust Display";
+  src: url("../assets/fonts/momo-trust-display-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
 *,
 *::before,
 *::after {

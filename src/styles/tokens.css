@@ -5,6 +5,7 @@
   /* Tipografía */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --font-brand: "Momo Trust Display", var(--font-sans);
   --text-xs: 11px;
   --text-sm: 12px;
   --text-md: 13px;
@@ -42,6 +43,11 @@
   --warning: #ff9f0a;
   --success: #30d158;
 
+  /* Logo: la W va en el acento (azul → índigo del sistema), los arcos en neutro */
+  --logo-w-start: #0a84ff;
+  --logo-w-end: #5e5ce6;
+  --logo-arcs: rgba(0, 0, 0, 0.42);
+
   /* Superficies y texto (claro). El fondo de la ventana lo da el vibrancy. */
   --text: rgba(0, 0, 0, 0.88);
   --text-secondary: rgba(0, 0, 0, 0.56);
@@ -76,5 +82,8 @@
     --skeleton-b: rgba(255, 255, 255, 0.12);
     --toast-bg: rgba(250, 250, 252, 0.92);
     --toast-text: #111;
+    --logo-w-start: #409cff;
+    --logo-w-end: #7d7aff;
+    --logo-arcs: rgba(255, 255, 255, 0.5);
   }
 }

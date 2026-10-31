@@ -28,6 +28,7 @@ import { SourceSelector } from "./components/SourceSelector";
 import { WallpaperCard, SkeletonGrid } from "./components/WallpaperGrid";
 import { EmptyState } from "./components/EmptyState";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { Logo } from "./components/Logo";
 import { Toast, ToastState } from "./components/Toast";
 import {
   SettingsIcon, WallpaperIcon, Search, Pin, PinOff, Minus,
@@ -273,6 +274,7 @@ function App() {
   return (
     <div className="app">
       <header className="titlebar">
+        <Logo />
         <SegmentedControl
           label="Secciones"
           idPrefix="nav"
