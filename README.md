@@ -2,7 +2,7 @@
 
 App de barra de menú para macOS que permite buscar y aplicar wallpapers desde [Wallhaven](https://wallhaven.cc), el [Art Institute of Chicago](https://www.artic.edu) y la [NASA](https://images.nasa.gov) sin salir del teclado ni abrir el navegador.
 
-![App Main Window](sshots/app.jpg)
+![App Main Window](sshots/wallflow.jpg)
 
 ## ¿Qué hace?
 
@@ -85,7 +85,6 @@ Wallflow Pro: ya existe el diseño de las funciones bloqueadas en Ajustes (insig
 - Rotación automática de wallpaper (slideshow real, no solo preview)
 - Soporte multi-monitor
 - Favoritos / colecciones
-- Más fuentes de museos
 
 ---
 
