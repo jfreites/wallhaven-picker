@@ -43,7 +43,7 @@ export async function listLocalWallpapers(): Promise<LocalWallpaper[]> {
 
 export async function ensureAppFolder(): Promise<string> {
   const home = await homeDir();
-  const appDir = `${home}/WallhavenPicker`;
+  const appDir = `${home}/Wallflow`;
   const wallpapersDir = `${appDir}/Wallpapers`;
 
   if (!(await exists(wallpapersDir))) {

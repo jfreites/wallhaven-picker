@@ -14,7 +14,7 @@ App de barra de menú para macOS que permite buscar y aplicar wallpapers desde [
 - Cada thumbnail muestra al pasar el mouse sus acciones: aplicar, guardar o ver, junto con la atribución (autor o fuente, con enlace a la obra)
 - Vista tipo slideshow a pantalla completa de la ventana, con navegación por flechas, `Esc` para cerrar, y autor, fuente y licencia
 - Aplica el wallpaper seleccionado directamente al escritorio con un click. En NASA avisa si la imagen es menor que tu pantalla y rechaza las verticales
-- Guarda localmente cada wallpaper aplicado o guardado en `~/WallhavenPicker/Wallpapers`, junto con su atribución
+- Guarda localmente cada wallpaper aplicado o guardado en `~/Wallflow/Wallpapers`, junto con su atribución
 - Pestaña "Mis Wallpapers" para ver, reaplicar y eliminar uno por uno los wallpapers ya descargados, sin volver a buscar
 - Gestión de almacenamiento: ver cuánto espacio ocupan tus wallpapers guardados y limpiarlo con un click
 - Campo opcional de API key de Wallhaven en Ajustes
@@ -75,7 +75,7 @@ Una vez abierta la primera vez, funciona con doble-click normalmente.
 - Las peticiones usan el plugin `http` de Tauri. Los errores (límite de peticiones, sin conexión, API key rechazada) se traducen a mensajes uniformes por fuente
 - El Art Institute exige identificar a la app con un header propio, que las `<img>` del webview no pueden enviar: sus imágenes se descargan con el plugin `http` y se muestran como blob
 - En NASA, la búsqueda ya trae las URLs de cada imagen. Las dimensiones que faltan se leen de la cabecera del archivo con una petición `Range` y solo al abrir, descargar o aplicar, y se cachean en memoria
-- Los wallpapers aplicados se descargan a `~/WallhavenPicker/Wallpapers` (carpeta propia en el home, sin restricciones de permisos de macOS) y se aplican corriendo un script de AppleScript vía el plugin `shell`
+- Los wallpapers aplicados se descargan a `~/Wallflow/Wallpapers` (carpeta propia en el home, sin restricciones de permisos de macOS) y se aplican corriendo un script de AppleScript vía el plugin `shell`
 - Las preferencias (filtro de resolución, API key, última fuente) y la atribución de lo descargado se persisten con el plugin `store` de Tauri
 
 ## Roadmap / ideas pendientes

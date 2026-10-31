@@ -29,13 +29,13 @@
       "identifier": "fs:allow-stat",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         },
         {
-          "path": "$HOME/WallhavenPicker/*"
+          "path": "$HOME/Wallflow/*"
         },
         {
-          "path": "$HOME/WallhavenPicker/Wallpapers/*"
+          "path": "$HOME/Wallflow/Wallpapers/*"
         }
       ]
     },
@@ -43,13 +43,13 @@
       "identifier": "fs:allow-remove",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         },
         {
-          "path": "$HOME/WallhavenPicker/*"
+          "path": "$HOME/Wallflow/*"
         },
         {
-          "path": "$HOME/WallhavenPicker/Wallpapers/*"
+          "path": "$HOME/Wallflow/Wallpapers/*"
         }
       ]
     },
@@ -60,7 +60,7 @@
       "identifier": "fs:allow-mkdir",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         }
       ]
     },
@@ -68,7 +68,7 @@
       "identifier": "fs:allow-exists",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         }
       ]
     },
@@ -76,7 +76,7 @@
       "identifier": "fs:allow-write-file",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         }
       ]
     },
@@ -84,7 +84,7 @@
       "identifier": "fs:allow-read-dir",
       "allow": [
         {
-          "path": "$HOME/WallhavenPicker/**"
+          "path": "$HOME/Wallflow/**"
         }
       ]
     },
