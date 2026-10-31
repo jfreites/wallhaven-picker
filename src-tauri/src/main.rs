@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    wallhaven_picker_lib::run()
+    wallflow_lib::run()
 }

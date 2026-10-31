@@ -4771,7 +4771,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wallhaven-picker"
+name = "wallflow"
 version = "0.1.0"
 dependencies = [
  "serde",
